@@ -2,6 +2,7 @@
 import io
 import logging
 import os
+from sqlalchemy import text
 import re
 import uuid
 from contextlib import asynccontextmanager
@@ -72,11 +73,22 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {
-        "status": "ok",
-        "app": "LearnYah",
-        "llm": "Groq API",
-    }
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+
+        return {
+                "status": "ok",
+                "app": "LearnYah",
+                "llm": "Groq API",
+            }
+
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Database unavailable"
+        )
+    
 
 
 @app.get("/api/documents")
