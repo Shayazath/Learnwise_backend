@@ -1,4 +1,4 @@
-# LearnWise — Local-first AI Study Assistant
+# LearnYah — Local-first AI Study Assistant
 
 A zero-paid-API starter project for learning AI engineering by building a useful study app.
 

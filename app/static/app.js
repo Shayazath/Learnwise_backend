@@ -7,7 +7,7 @@ function addBubble(role, text) {
   p.textContent = text;
   if (role === "assistant") {
     const title = document.createElement("strong");
-    title.textContent = "LearnWise";
+    title.textContent = "LearnYah";
     bubble.appendChild(title);
   }
   bubble.appendChild(p);
@@ -102,7 +102,7 @@ $("chat-form").addEventListener("submit", async (event) => {
     addBubble("assistant", `I couldn't complete that request: ${err.message}`);
   } finally {
     button.disabled = false;
-    button.innerHTML = 'Ask LearnWise <span>↗</span>';
+    button.innerHTML = 'Ask LearnYah <span>↗</span>';
     $("message").focus();
   }
 });

@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="LearnWise API",
+    title="LearnYah API",
     description="AI study assistant using Groq and RAG.",
     version="0.1.0",
     lifespan=lifespan,
@@ -52,6 +52,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://learnwise-backend-git-1066822843146.asia-south1.run.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -71,7 +72,7 @@ def home():
 def health():
     return {
         "status": "ok",
-        "app": "LearnWise",
+        "app": "LearnYah",
         "llm": "Groq API",
     }
 

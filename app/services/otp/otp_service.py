@@ -107,11 +107,11 @@ def send_registration_otp(
 
     safe_name = escape(full_name)
 
-    subject = "Verify your LearnWise email address"
+    subject = "Verify your LearnYah email address"
 
     body_text = (
         f"Hello {full_name},\n\n"
-        f"Your LearnWise verification code is: {otp}\n\n"
+        f"Your LearnYah verification code is: {otp}\n\n"
         f"This code expires in {OTP_EXPIRE_MINUTES} minutes.\n"
         "If you did not request this code, please ignore this email."
     )

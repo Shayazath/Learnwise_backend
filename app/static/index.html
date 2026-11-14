@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LearnWise — AI Study Assistant</title>
+  <title>LearnYah — AI Study Assistant</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="topbar">
     <div class="brand-mark">L</div>
-    <div><strong>LearnWise</strong><small>Local AI study assistant</small></div>
+    <div><strong>LearnYah</strong><small>Local AI study assistant</small></div>
     <span class="local-pill">● Local-first</span>
   </header>
   <main class="layout">
     <aside class="sidebar">
       <h2>Your study space</h2>
-      <p class="muted">Add your notes to let LearnWise answer using your own materials.</p>
+      <p class="muted">Add your notes to let LearnYah answer using your own materials.</p>
       <form id="upload-form">
         <label for="file">Upload notes (.txt or text PDF)</label>
         <input id="file" name="file" type="file" accept=".txt,.pdf" required>
@@ -41,12 +41,12 @@
 
       <section id="chat-panel" class="panel">
         <div id="chat-messages" class="chat-messages" aria-live="polite">
-          <div class="bubble assistant"><strong>LearnWise</strong><p>Hi! Ask me to explain a concept, give an example, or help you understand your uploaded notes.</p></div>
+          <div class="bubble assistant"><strong>LearnYah</strong><p>Hi! Ask me to explain a concept, give an example, or help you understand your uploaded notes.</p></div>
         </div>
         <form id="chat-form" class="composer">
           <textarea id="message" rows="2" maxlength="5000" placeholder="For example: Explain neural networks using a simple analogy…" required></textarea>
           <label class="check-row"><input id="use-docs" type="checkbox" checked> Use my uploaded notes when relevant</label>
-          <button id="send-button" type="submit">Ask LearnWise <span>↗</span></button>
+          <button id="send-button" type="submit">Ask LearnYah <span>↗</span></button>
         </form>
       </section>
 
@@ -61,7 +61,7 @@
         </form>
         <div id="quiz-result" class="result" aria-live="polite"></div>
       </section>
-      <footer>LearnWise v0.1 · Built for learning, not replacing teachers or textbooks.</footer>
+      <footer>LearnYah v0.1 · Built for learning, not replacing teachers or textbooks.</footer>
     </section>
   </main>
   <script src="/static/app.js"></script>
