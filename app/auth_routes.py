@@ -18,15 +18,21 @@ from app.auth import (
     set_auth_cookie,
     clear_auth_cookie,
 )
-from app.db import User
+from app.db import User, EmailVerification
 from app.schemas import (
     RegisterRequest,
     LoginRequest,
     UserResponse,
     ProfileUpdateRequest,
     ChangePasswordRequest,
+    VerifyEmailRequest,
+    ResendOTPRequest,
 )
-
+from app.services.otp.otp_service import (
+    send_registration_otp,
+    verify_registration_otp,
+    REGISTRATION_PURPOSE,
+)
 
 router = APIRouter(
     prefix="/api/auth",
@@ -36,14 +42,20 @@ router = APIRouter(
 
 @router.post(
     "/register",
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 def register(
     payload: RegisterRequest,
-    response: Response,
     db: Session = Depends(get_db),
 ):
     email = str(payload.email).strip().lower()
+    full_name = payload.full_name.strip()
+
+    if len(full_name) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Full name must contain at least 2 characters.",
+        )
 
     existing_user = (
         db.query(User)
@@ -57,32 +69,20 @@ def register(
             detail="An account with this email already exists.",
         )
 
-    user = User(
-        full_name=payload.full_name.strip(),
+    password_hash = hash_password(payload.password)
+
+    send_registration_otp(
+        db=db,
         email=email,
-        password_hash=hash_password(payload.password),
+        full_name=full_name,
+        password_hash=password_hash,
     )
 
-    db.add(user)
-
-    try:
-        db.commit()
-        db.refresh(user)
-
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
-        )
-
-    token = create_access_token(user.id)
-    set_auth_cookie(response, token)
-
     return {
-        "user": UserResponse.model_validate(user)
+        "message": "Verification code sent to your email address.",
+        "email": email,
+        "expires_in": 300,
     }
-
 
 @router.post("/login")
 def login(
@@ -114,6 +114,107 @@ def login(
         "user": UserResponse.model_validate(user)
     }
 
+@router.post("/verify-email")
+def verify_email(
+    payload: VerifyEmailRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    email = str(payload.email).strip().lower()
+
+    try:
+        verification = verify_registration_otp(
+            db=db,
+            email=email,
+            otp=payload.otp,
+        )
+
+        if not verification.full_name or not verification.password_hash:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid registration verification request.",
+            )
+
+        existing_user = (
+            db.query(User)
+            .filter(User.email == email)
+            .first()
+        )
+
+        if existing_user:
+            db.delete(verification)
+            db.commit()
+
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this email already exists.",
+            )
+
+        user = User(
+            full_name=verification.full_name,
+            email=email,
+            password_hash=verification.password_hash,
+        )
+
+        db.add(user)
+        db.delete(verification)
+
+        db.commit()
+        db.refresh(user)
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+
+    except Exception:
+        db.rollback()
+        raise
+
+    token = create_access_token(user.id)
+    set_auth_cookie(response, token)
+
+    return {
+        "message": "Email verified and account created successfully.",
+        "user": UserResponse.model_validate(user),
+    }
+
+@router.post("/resend-otp")
+def resend_otp(
+    payload: ResendOTPRequest,
+    db: Session = Depends(get_db),
+):
+    email = str(payload.email).strip().lower()
+
+    verification = (
+        db.query(EmailVerification)
+        .filter(
+            EmailVerification.email == email,
+            EmailVerification.purpose == REGISTRATION_PURPOSE,
+        )
+        .first()
+    )
+
+    if not verification:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No pending registration found. Please register again.",
+        )
+
+    send_registration_otp(
+        db=db,
+        email=email,
+        full_name=verification.full_name,
+        password_hash=verification.password_hash,
+    )
+
+    return {
+        "message": "A new verification code has been sent.",
+        "email": email,
+        "expires_in": 300,
+    }
 
 @router.get("/me", response_model=UserResponse)
 def get_me(

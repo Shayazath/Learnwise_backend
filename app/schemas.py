@@ -53,3 +53,11 @@ class QuizRequest(BaseModel):
     topic: str = Field(min_length=1, max_length=300)
     question_count: int = Field(default=5, ge=1, le=10)
     use_documents: bool = True
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(pattern=r"^\d{6}$")
+
+
+class ResendOTPRequest(BaseModel):
+    email: EmailStr

@@ -65,3 +65,23 @@ def validate_r2_config():
         raise RuntimeError(
             f"Missing Cloudflare R2 configuration: {', '.join(missing)}"
         )
+
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp-relay.brevo.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL")
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "LearnWise")
+
+
+# Email OTP configuration
+OTP_EXPIRE_MINUTES = int(os.getenv("OTP_EXPIRE_MINUTES", "5"))
+OTP_RESEND_COOLDOWN_SECONDS = int(
+    os.getenv("OTP_RESEND_COOLDOWN_SECONDS", "60")
+)
+OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", "5"))
+
+OTP_SECRET_KEY = os.getenv("OTP_SECRET_KEY")
+
+if not OTP_SECRET_KEY:
+    raise RuntimeError("OTP_SECRET_KEY is missing from environment variables.")
