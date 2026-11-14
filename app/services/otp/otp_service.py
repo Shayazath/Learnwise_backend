@@ -17,7 +17,7 @@ from app.config import (
 )
 from app.db import EmailVerification
 from app.services.email.email_service import send_email
-
+from app.db import User
 
 REGISTRATION_PURPOSE = "registration"
 
@@ -231,3 +231,309 @@ def verify_registration_otp(
         )
 
     return verification
+
+
+
+PASSWORD_RESET_PURPOSE = "password_reset"
+RESET_TOKEN_EXPIRE_MINUTES = 10
+
+
+def send_password_reset_otp(
+    db: Session,
+    user: User,
+) -> None:
+    """Generate and send a password-reset OTP."""
+
+    email = user.email.strip().lower()
+    now = datetime.now(timezone.utc)
+
+    verification = (
+        db.query(EmailVerification)
+        .filter(
+            EmailVerification.email == email,
+            EmailVerification.purpose == PASSWORD_RESET_PURPOSE,
+        )
+        .with_for_update()
+        .first()
+    )
+
+    if verification:
+        last_sent_at = verification.last_sent_at
+
+        if last_sent_at.tzinfo is None:
+            last_sent_at = last_sent_at.replace(tzinfo=timezone.utc)
+
+        elapsed = (now - last_sent_at).total_seconds()
+
+        if elapsed < OTP_RESEND_COOLDOWN_SECONDS:
+            remaining = max(
+                1,
+                OTP_RESEND_COOLDOWN_SECONDS - int(elapsed),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Please wait {remaining} seconds before requesting another OTP.",
+            )
+
+    otp = generate_otp()
+    otp_hash = hash_otp(email, PASSWORD_RESET_PURPOSE, otp)
+
+    if verification:
+        verification.otp_hash = otp_hash
+        verification.user_id = user.id
+        verification.full_name = None
+        verification.password_hash = None
+        verification.expires_at = now + timedelta(
+            minutes=OTP_EXPIRE_MINUTES
+        )
+        verification.attempts = 0
+        verification.last_sent_at = now
+    else:
+        verification = EmailVerification(
+            email=email,
+            purpose=PASSWORD_RESET_PURPOSE,
+            otp_hash=otp_hash,
+            user_id=user.id,
+            full_name=None,
+            password_hash=None,
+            expires_at=now + timedelta(minutes=OTP_EXPIRE_MINUTES),
+            attempts=0,
+            last_sent_at=now,
+        )
+        db.add(verification)
+
+    try:
+        db.commit()
+        db.refresh(verification)
+    except Exception:
+        db.rollback()
+        raise
+
+    subject = "Reset your LearnYah password"
+
+    body_text = (
+        f"Hello {user.full_name},\n\n"
+        f"Your LearnYah password reset code is: {otp}\n\n"
+        f"This code expires in {OTP_EXPIRE_MINUTES} minutes.\n"
+        "If you did not request a password reset, please ignore this email."
+    )
+
+    safe_name = escape(user.full_name)
+
+    body_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+        <h2>Password reset request</h2>
+        <p>Hello {safe_name},</p>
+        <p>Use this verification code to reset your LearnYah password:</p>
+        <div style="font-size: 32px; font-weight: bold;
+                    letter-spacing: 8px; padding: 20px;
+                    background: #f3f4f6; text-align: center;">
+            {otp}
+        </div>
+        <p>This code expires in {OTP_EXPIRE_MINUTES} minutes.</p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+    </div>
+    """
+
+    try:
+        send_email(
+            to_email=email,
+            subject=subject,
+            body_text=body_text,
+            body_html=body_html,
+        )
+    except Exception:
+        db.rollback()
+
+        db.query(EmailVerification).filter(
+            EmailVerification.id == verification.id,
+            EmailVerification.otp_hash == otp_hash,
+        ).delete(synchronize_session=False)
+
+        db.commit()
+        raise
+
+
+def verify_password_reset_otp(
+    db: Session,
+    email: str,
+    otp: str,
+) -> str:
+    """
+    Verify password-reset OTP and issue a short-lived reset token.
+    The token is stored as a hash and can only be used once.
+    """
+
+    email = email.strip().lower()
+
+    verification = (
+        db.query(EmailVerification)
+        .filter(
+            EmailVerification.email == email,
+            EmailVerification.purpose == PASSWORD_RESET_PURPOSE,
+        )
+        .with_for_update()
+        .first()
+    )
+
+    if not verification:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code.",
+        )
+
+    now = datetime.now(timezone.utc)
+    expires_at = verification.expires_at
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if now >= expires_at:
+        db.delete(verification)
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your verification code has expired. Please request a new one.",
+        )
+
+    if verification.attempts >= OTP_MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Maximum verification attempts reached. Please request a new OTP.",
+        )
+
+    expected_hash = hash_otp(
+        email,
+        PASSWORD_RESET_PURPOSE,
+        otp,
+    )
+
+    if not hmac.compare_digest(
+        verification.otp_hash,
+        expected_hash,
+    ):
+        verification.attempts += 1
+        db.commit()
+
+        remaining = OTP_MAX_ATTEMPTS - verification.attempts
+
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Maximum verification attempts reached. Please request a new OTP.",
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Incorrect verification code. {remaining} attempts remaining.",
+        )
+
+    if not verification.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid password reset request.",
+        )
+
+    reset_token = secrets.token_urlsafe(32)
+
+    verification.otp_hash = hash_otp(
+        email,
+        PASSWORD_RESET_PURPOSE,
+        reset_token,
+    )
+
+    verification.expires_at = now + timedelta(
+        minutes=RESET_TOKEN_EXPIRE_MINUTES
+    )
+
+    verification.attempts = 0
+
+    db.commit()
+
+    return reset_token
+
+
+def complete_password_reset(
+    db: Session,
+    email: str,
+    reset_token: str,
+    new_password: str,
+) -> None:
+    """Validate reset token and update the user's password."""
+
+    email = email.strip().lower()
+
+    verification = (
+        db.query(EmailVerification)
+        .filter(
+            EmailVerification.email == email,
+            EmailVerification.purpose == PASSWORD_RESET_PURPOSE,
+        )
+        .with_for_update()
+        .first()
+    )
+
+    if not verification:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset session.",
+        )
+
+    now = datetime.now(timezone.utc)
+    expires_at = verification.expires_at
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if now >= expires_at:
+        db.delete(verification)
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset session expired. Please start again.",
+        )
+
+    expected_hash = hash_otp(
+        email,
+        PASSWORD_RESET_PURPOSE,
+        reset_token,
+    )
+
+    if not hmac.compare_digest(
+        verification.otp_hash,
+        expected_hash,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid password reset token.",
+        )
+
+    user = (
+        db.query(User)
+        .filter(User.id == verification.user_id)
+        .with_for_update()
+        .first()
+    )
+
+    if not user:
+        db.delete(verification)
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid password reset request.",
+        )
+
+    from app.auth import hash_password
+
+    user.password_hash = hash_password(new_password)
+
+    db.delete(verification)
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

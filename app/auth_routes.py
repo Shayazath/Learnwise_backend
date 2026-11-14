@@ -27,11 +27,17 @@ from app.schemas import (
     ChangePasswordRequest,
     VerifyEmailRequest,
     ResendOTPRequest,
+    ForgotPasswordRequest,
+    VerifyResetOTPRequest,
+    ResetPasswordRequest,
 )
 from app.services.otp.otp_service import (
     send_registration_otp,
     verify_registration_otp,
     REGISTRATION_PURPOSE,
+    send_password_reset_otp,
+    verify_password_reset_otp,
+    complete_password_reset,
 )
 
 router = APIRouter(
@@ -215,6 +221,73 @@ def resend_otp(
         "email": email,
         "expires_in": 300,
     }
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    email = str(payload.email).strip().lower()
+
+    user = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
+    # Always return the same response to prevent email enumeration.
+    if user:
+        send_password_reset_otp(
+            db=db,
+            user=user,
+        )
+
+    return {
+        "message": "If an account exists with this email, a password reset code has been sent.",
+        "email": email,
+        "expires_in": 300,
+    }
+
+
+@router.post("/verify-reset-otp")
+def verify_reset_otp(
+    payload: VerifyResetOTPRequest,
+    db: Session = Depends(get_db),
+):
+    email = str(payload.email).strip().lower()
+
+    reset_token = verify_password_reset_otp(
+        db=db,
+        email=email,
+        otp=payload.otp,
+    )
+
+    return {
+        "message": "OTP verified successfully.",
+        "reset_token": reset_token,
+        "expires_in": 600,
+    }
+
+
+@router.post("/reset-password")
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    email = str(payload.email).strip().lower()
+
+    complete_password_reset(
+        db=db,
+        email=email,
+        reset_token=payload.reset_token,
+        new_password=payload.new_password,
+    )
+
+    return {
+        "message": "Your password has been reset successfully. Please log in with your new password."
+    }
+
 
 @router.get("/me", response_model=UserResponse)
 def get_me(
