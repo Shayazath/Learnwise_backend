@@ -18,6 +18,7 @@ from app.auth import (
     set_auth_cookie,
     clear_auth_cookie,
 )
+from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
 from app.db import User, EmailVerification
 from app.schemas import (
     RegisterRequest,
@@ -93,7 +94,6 @@ def register(
 @router.post("/login")
 def login(
     payload: LoginRequest,
-    response: Response,
     db: Session = Depends(get_db),
 ):
     email = str(payload.email).strip().lower()
@@ -114,12 +114,13 @@ def login(
         )
 
     token = create_access_token(user.id)
-    set_auth_cookie(response, token)
 
     return {
-        "user": UserResponse.model_validate(user)
+    "access_token": token,
+    "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    "token_type": "bearer",
+    "user": UserResponse.model_validate(user),
     }
-
 @router.post("/verify-email")
 def verify_email(
     payload: VerifyEmailRequest,
@@ -180,11 +181,13 @@ def verify_email(
         raise
 
     token = create_access_token(user.id)
-    set_auth_cookie(response, token)
+    # set_auth_cookie(response, token)
 
     return {
         "message": "Email verified and account created successfully.",
         "user": UserResponse.model_validate(user),
+        "access_token": token,
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     }
 
 @router.post("/resend-otp")
@@ -374,10 +377,12 @@ def change_password(
 
     # Issue a fresh access token after changing the password.
     token = create_access_token(current_user.id)
-    set_auth_cookie(response, token)
+    # set_auth_cookie(response, token)
 
     return {
-        "message": "Password changed successfully."
+        "message": "Password changed successfully.",
+        "access_token": token,
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     }
 
 
