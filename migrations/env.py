@@ -19,7 +19,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app.config import DATABASE_URL
-from app.db import Base, User, StudyDocument
+from app.db import Base, User, StudyDocument, EmailVerification
 
 config = context.config
 config.set_main_option(
