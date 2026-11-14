@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LearnWise — AI Study Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-mark">L</div>
+    <div><strong>LearnWise</strong><small>Local AI study assistant</small></div>
+    <span class="local-pill">● Local-first</span>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>Your study space</h2>
+      <p class="muted">Add your notes to let LearnWise answer using your own materials.</p>
+      <form id="upload-form">
+        <label for="file">Upload notes (.txt or text PDF)</label>
+        <input id="file" name="file" type="file" accept=".txt,.pdf" required>
+        <button type="submit" class="secondary">Upload notes</button>
+      </form>
+      <p id="upload-status" class="status" role="status"></p>
+      <div class="section-heading"><h3>My documents</h3><button id="refresh-docs" class="text-button" type="button">Refresh</button></div>
+      <ul id="documents" class="document-list"><li class="muted">Loading documents…</li></ul>
+      <div class="privacy-note"><strong>Privacy note</strong><br>Files and AI inference are stored/run locally on this computer in this starter setup. Don't expose this development server publicly.</div>
+    </aside>
+
+    <section class="workspace">
+      <div class="welcome">
+        <span class="eyebrow">YOUR PERSONAL AI TUTOR</span>
+        <h1>Learn something deeply.</h1>
+        <p>Ask questions, explore your notes, or create a practice quiz.</p>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="chat" type="button">Ask tutor</button>
+        <button class="tab" data-tab="quiz" type="button">Create quiz</button>
+      </div>
+
+      <section id="chat-panel" class="panel">
+        <div id="chat-messages" class="chat-messages" aria-live="polite">
+          <div class="bubble assistant"><strong>LearnWise</strong><p>Hi! Ask me to explain a concept, give an example, or help you understand your uploaded notes.</p></div>
+        </div>
+        <form id="chat-form" class="composer">
+          <textarea id="message" rows="2" maxlength="5000" placeholder="For example: Explain neural networks using a simple analogy…" required></textarea>
+          <label class="check-row"><input id="use-docs" type="checkbox" checked> Use my uploaded notes when relevant</label>
+          <button id="send-button" type="submit">Ask LearnWise <span>↗</span></button>
+        </form>
+      </section>
+
+      <section id="quiz-panel" class="panel hidden">
+        <form id="quiz-form" class="quiz-form">
+          <label for="topic">What topic do you want to practise?</label>
+          <input id="topic" maxlength="300" placeholder="e.g. Python functions or photosynthesis" required>
+          <label for="count">Number of questions</label>
+          <select id="count"><option>3</option><option selected>5</option><option>10</option></select>
+          <label class="check-row"><input id="quiz-use-docs" type="checkbox" checked> Base the quiz on my uploaded notes when relevant</label>
+          <button type="submit" id="quiz-button">Generate practice quiz</button>
+        </form>
+        <div id="quiz-result" class="result" aria-live="polite"></div>
+      </section>
+      <footer>LearnWise v0.1 · Built for learning, not replacing teachers or textbooks.</footer>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

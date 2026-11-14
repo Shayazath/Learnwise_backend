@@ -1,0 +1,22 @@
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: learnwise-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: learnwise
+      POSTGRES_USER: learnwise_user
+      POSTGRES_PASSWORD: learnwise2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - learnwise_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U learnwise_user -d learnwise"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  learnwise_pgdata:
