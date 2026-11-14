@@ -54,6 +54,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "https://learnwise-backend-git-1066822843146.asia-south1.run.app",
         "https://learnwise-frontend.vercel.app",
+        "https://learnyah-frontend.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -254,7 +255,7 @@ def chat(
             )
 
     system = (
-        "You are LearnWise, a patient and careful study tutor. Explain ideas clearly, "
+        "You are LearnYah, a patient and careful study tutor. Explain ideas clearly, "
         "use examples, and encourage understanding rather than rote memorization. "
         "If source material is provided, prioritize it, cite filenames in your answer, "
         "and say when the material does not contain the answer. Never invent quotations "
