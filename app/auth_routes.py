@@ -115,12 +115,12 @@ def login(
 
     token = create_access_token(
         user.id,
-        remember_me=payload.remember_me,
+        remember_me=payload.rememberMe,
     )
 
     expires_in = (
         30 * 24 * 60 * 60
-        if payload.remember_me
+        if payload.rememberMe
         else ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
