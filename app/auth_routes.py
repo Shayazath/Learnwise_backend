@@ -113,13 +113,22 @@ def login(
             detail="Invalid email or password.",
         )
 
-    token = create_access_token(user.id)
+    token = create_access_token(
+        user.id,
+        remember_me=payload.remember_me,
+    )
+
+    expires_in = (
+        30 * 24 * 60 * 60
+        if payload.remember_me
+        else ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
 
     return {
-    "access_token": token,
-    "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    "token_type": "bearer",
-    "user": UserResponse.model_validate(user),
+        "access_token": token,
+        "expires_in": expires_in,
+        "token_type": "bearer",
+        "user": UserResponse.model_validate(user),
     }
 @router.post("/verify-email")
 def verify_email(

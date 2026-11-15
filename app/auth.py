@@ -52,15 +52,22 @@ def verify_password(
     )
 
 
-def create_access_token(user_id: uuid.UUID) -> str:
+def create_access_token(
+    user_id: uuid.UUID,
+    remember_me: bool = False,
+) -> str:
     now = datetime.now(timezone.utc)
+
+    expires_delta = (
+        timedelta(days=30)
+        if remember_me
+        else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
 
     payload = {
         "sub": str(user_id),
         "iat": now,
-        "exp": now + timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-        ),
+        "exp": now + expires_delta,
         "type": "access",
     }
 
