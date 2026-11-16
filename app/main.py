@@ -56,6 +56,7 @@ app.add_middleware(
         "https://learnwise-backend-git-1066822843146.asia-south1.run.app",
         "https://learnwise-frontend.vercel.app",
         "https://learnyah-frontend.vercel.app",
+        "https://learnyah.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -20,7 +20,7 @@ if not GROQ_API_KEY:
 
 client = Groq(
     api_key=GROQ_API_KEY,
-    timeout=45.0,
+    timeout=120.0,
     max_retries=2,
 )
 
